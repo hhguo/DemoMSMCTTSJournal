@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Demo Page: A Multi-Stage Multi-Codebook VQ-VAE Approach to High-Performance Neural TTS</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <script src="jquery-3.5.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div id="text1">A Multi-Stage Multi-Codebook VQ-VAE Approach to High-Performance Neural TTS
+        </div>
+        <div id="intro">
+            <br>
+            <p>
+                Haohan Guo, Fenglong Xie, Frank K. Soong, Xixin Wu, Helen Meng
+            </p>
+            <p>Accepted by <i>INTERSPEECH 2022</i>
+            </p>
+            <!-- <p>
+            [<a href="https://arxiv.org/abs/2104.00355">Paper</a>]
+        </p> -->
+        </div>
+    </div>
+    <div class="content-container">
+        <p>
+            We propose a Multi-Stage, Multi-Codebook (MSMC) approach to high performance neural TTS synthesis. A vector-quantized, variational autoencoder (VQ-VAE) based feature analyzer is used to encode Mel spectrograms of speech training data by down-sampling progressively in multiple stages into MSMC Representations (MSMCRs) with different time resolutions, and quantizing them with multiple VQ codebooks, respectively. Multi-stage predictors are trained to map the input text sequence to MSMCRs progressively by minimizing a combined loss of the reconstruction Mean Square Error (MSE) and “triplet loss”. In synthesis, the neural vocoder converts the predicted MSMCRs into final speech waveforms. The proposed approach is trained and tested with an English TTS database of 16 hours by a female speaker. The proposed TTS achieves an MOS score of 4.41, which outperforms the baseline with an MOS of 3.62. Compact versions of the proposed TTS with much less parameters can still preserve high MOS scores. Ablation studies show that both multiple stages and multiple codebooks are effective for achieving high TTS performance.    
+        </p>
+        <br />
+    </div>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <div class="content-container">
+        <div class="content-title">Samples</div>
+        <div id='descript'>
+        </div>
+        <div id='legend'>
+            <ul style="list-style-type:circle">
+            </ul>
+        </div>
+        <div class="option-div" id="tests-div">
+            <label for="tests">Choose test:</label>
+            <select id="tests" onchange=record(this)>
+                <option value="standard_tts">Standard TTS</option>
+                <option value="lightweight_tts">Lightweight TTS</option>
+                <option value="ablation_study">Ablation Study</option>
+            </select>
+        </div>
+        <div id="result-div"></div>
+    </div>
+
+    <div id="loading-status">Loading......</div>
+
+    <script>
+        var mode = 0;
+        var audio;
+        var filename = null;
+        function play(file_name) {
+            if (filename !== file_name) {
+                if (audio) {
+                    audio.pause();
+                }
+
+                audio = new Audio(file_name);
+                filename = file_name;
+                audio.play();
+            } else {
+                if (audio.paused) {
+                    audio = new Audio(file_name);
+                    filename = file_name;
+                    audio.play();
+                } else {
+                    audio.pause();
+                }
+            }
+        }
+        function switchMode() {
+            if (document.getElementById("myonoffswitch").checked) {
+                mode = 0;
+            }
+            else {
+                mode = 1;
+            }
+        }
+    </script>
+
+    <script>
+        /* Highlights the navigation bar button corresponding to page
+        to indicate which page a user is currently viewing.
+        */
+        var dataset = "bc11";
+        var tasks = "tts";
+        var tests = 'standard_tts';
+
+        var tests_to_methods = {
+            "standard_tts": ['recordings', 'mel', 'mel_ft', 'hmcr'],
+            "lightweight_tts": ['mel_fft_128', 'mel_cnn_128', 'hmcr_fft_128', 'hmcr_cnn_128'],
+            "ablation_study": ['v1', 'v2', 'v3'],
+        };
+
+        var method_to_hdr = {
+            "recordings": "Original Recordings",
+            "mel": "FastSpeech",
+            "mel_ft": "FastSpeech w/ fine-tuned vocoder",
+            "hmcr": "MSMC-TTS",
+            "hmcr_fft_600": "MSMC-M1",
+            "hmcr_fft_128": "MSMC-M2",
+            "hmcr_cnn_128": "MSMC-M3",
+            "mel_fft_600": "Mel-M1",
+            "mel_fft_128": "Mel-M2",
+            "mel_cnn_128": "Mel-M3",
+            "v1": "v3",
+            "v2": "v2",
+            "v3": "v1",
+        };
+
+        var id_list = [
+            "ARC_115",
+            "ARC_258",
+            "ARC_270",
+            "ARC_640",
+            "ARC_763",
+            "ARC_800",
+            "ARC_817",
+            "HAW-064-01",
+            "HAW-128-00",
+            "HAW-136-05",
+        ];
+
+        var file_lists = {
+            "bc11_tts_standard_tts": id_list,
+            "bc11_tts_lightweight_tts": id_list,
+            "bc11_tts_ablation_study": id_list,
+        };
+
+        // var root = 'https://dl.fbaipublicfiles.com/speechbot/demo_samples';
+        var root = './audio';
+
+        function lock() {
+            $('#dataset').attr('disabled', 'disabled');
+            $('#tasks').attr('disabled', 'disabled');
+            $('#tests').attr('disabled', 'disabled');
+            $('#loading-status').show();
+        }
+        function unlock() {
+            $('#dataset').removeAttr('disabled');
+            $('#tasks').removeAttr('disabled');
+            $('#tests').removeAttr('disabled');
+            $('#loading-status').hide();
+        }
+
+        function preload(dataset, tasks, tests, push) {
+            lock();
+            $('#tasks').val(tasks);
+            $('#tests').val(tests);
+            $("#result-div").empty();
+            $("#result-div").append(createTable());
+            unlock();
+        }
+
+        preload(dataset, tasks, tests, true);
+
+        function createTable() {
+            var tableElem;
+            tableElem = document.createElement('table');
+            if (tasks === 'tts') {
+                return tts(tableElem);
+            }
+        }
+
+        function tts(tableElem) {
+            var headline, colElem, rowElem;
+
+            headline = document.createElement('tr');
+
+            colElem = document.createElement('td');
+            colElem.appendChild(document.createTextNode('ID'));
+            colElem.style.color = 'rgb(6, 150, 200)';
+            colElem.style.center = true;
+            headline.appendChild(colElem);
+
+            colElem = document.createElement('td');
+            headline.appendChild(colElem);
+
+            methods = tests_to_methods[tests];
+            console.log(tests);
+            console.log(tests_to_methods);
+            console.log(methods);
+            for (var ii = 0; ii < methods.length; ii++) {
+                colElem = document.createElement('td');
+                colElem.appendChild(document.createTextNode(method_to_hdr[methods[ii]]));
+                colElem.style.color = 'rgb(6, 150, 200)';
+                colElem.style.center = true;
+                colElem.style.whiteSpace = 'pre';
+                headline.appendChild(colElem);
+            }
+
+            tableElem.appendChild(headline);
+
+            var bg_color = 'white';
+            var txt_color = 'rgb(6, 150, 200)';
+
+            var file_list = file_lists[dataset + "_" + tasks + "_" + tests];
+            var N = file_list.length;
+            for (var j = 0; j < N; j++) {
+                rowElem = document.createElement('tr');
+                rowElem.style.backgroundColor = bg_color;
+
+                colElem = document.createElement('td');
+                colElem.appendChild(document.createTextNode(j.toString()));
+                colElem.style.color = txt_color;
+                colElem.style.center = true;
+                rowElem.appendChild(colElem);
+
+                colElem = document.createElement('td');
+                rowElem.appendChild(colElem);
+
+                for (var ii = 0; ii < methods.length; ii++) {
+                    colElem = document.createElement('td');
+                    audio_path = root + "/" + tasks + "/" + tests + "/"  + dataset + "/" + methods[ii] + "/" + file_list[j] + ".wav"
+                    audio_html = "<audio name=\"audio_" + (j * methods.length + ii).toString() + "\" controls=\"\"><source src=\"" + audio_path + "\" type=\"audio/mpeg\" /></audio>";
+                    colElem.innerHTML = audio_html;
+                    rowElem.appendChild(colElem);
+                }
+
+                tableElem.appendChild(rowElem);
+
+                if ((j + 1) % 10 === 0) {
+                    flip = bg_color
+                    bg_color = txt_color;
+                    txt_color = flip;
+                }
+            }
+
+            return tableElem;
+        }
+
+        function fetch_result() {
+            $(window).ready(function () {
+                // dataset = $("#dataset").val();
+                
+                // tasks = $("#tasks").val();
+                // $("#tasks").empty();
+                // $("#tasks").append('<option value="resynthesis">Resynthesis</option>');
+                // $("#tasks").append('<option value="voice_conversion">Voice Conversion</option>');
+                // $("#tasks").append('<option value="codec">Codec (Unseen Speakers)</option>');
+                // $("#tasks").val(""tasks"");
+                
+                tests = $("#tests").val();
+                
+                $("#result-div").empty();
+                $("#result-div").append(createTable());
+                unlock();
+            });
+        }
+
+        function record(sel) {
+            lock();
+            fetch_result();
+        }
+
+        window.addEventListener('popstate', function (e) {
+            preload(e.state["dataset"], e.state["tasks"], e.state["tests"], false);
+        });
+    </script>
+
+    <div class="content-container">
+        Sample paged based on <a style="color:rgb(6, 150, 200)"
+            href="https://daps.cs.princeton.edu/projects/HiFi-GAN/index.php"> HiFi-GAN</a> page.
+    </div>
+</body>
+
+</html>
