@@ -3,21 +3,21 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Demo Page: A Multi-Stage Multi-Codebook VQ-VAE Approach to High-Performance Neural TTS</title>
+    <title>Demo Page: MSMC-TTS: Multi-Stage Multi-Codebook VQ-VAE based Neural TTS</title>
     <link rel="stylesheet" type="text/css" href="styles.css">
     <script src="jquery-3.5.js"></script>
 </head>
 
 <body>
     <div class="container">
-        <div id="text1">A Multi-Stage Multi-Codebook VQ-VAE Approach to High-Performance Neural TTS
+        <div id="text1">MSMC-TTS: Multi-Stage Multi-Codebook VQ-VAE based Neural TTS
         </div>
         <div id="intro">
             <br>
             <p>
                 Haohan Guo, Fenglong Xie, Frank K. Soong, Xixin Wu, Helen Meng
             </p>
-            <p>Accepted by <i>INTERSPEECH 2022</i>
+            <p>Under Review
             </p>
             <!-- <p>
             [<a href="https://arxiv.org/abs/2104.00355">Paper</a>]
@@ -26,8 +26,7 @@
     </div>
     <div class="content-container">
         <p>
-            We propose a Multi-Stage, Multi-Codebook (MSMC) approach to high performance neural TTS synthesis. A vector-quantized, variational autoencoder (VQ-VAE) based feature analyzer is used to encode Mel spectrograms of speech training data by down-sampling progressively in multiple stages into MSMC Representations (MSMCRs) with different time resolutions, and quantizing them with multiple VQ codebooks, respectively. Multi-stage predictors are trained to map the input text sequence to MSMCRs progressively by minimizing a combined loss of the reconstruction Mean Square Error (MSE) and “triplet loss”. In synthesis, the neural vocoder converts the predicted MSMCRs into final speech waveforms. The proposed approach is trained and tested with an English TTS database of 16 hours by a female speaker. The proposed TTS achieves an MOS score of 4.41, which outperforms the baseline with an MOS of 3.62. Compact versions of the proposed TTS with much less parameters can still preserve high MOS scores. Ablation studies show that both multiple stages and multiple codebooks are effective for achieving high TTS performance.    
-        </p>
+            This paper aims to improve neural TTS with vector-quantized, compact speech representations. We propose a Vector-Quantized Variational AutoEncoder (VQ-VAE) based feature analyzer to encode acoustic features into sequences with different time resolutions, and quantize them with multiple VQ codebooks to form the Multi-Stage Multi-Codebook Representation (MSMCR). The TTS system, MSMC-TTS, is proposed to predict better speech via this representation. In prediction, the multi-stage predictor is trained to map the input text sequence to MSMCRs in stages, by minimizing Euclidean distance and ``triplet loss''. In synthesis, the neural vocoder converts ground-truth or predicted MSMCRs into speech waveforms. The proposed system is trained with single-speaker TTS datasets and tested in various scenarios for comprehensive evaluation. In TTS evaluation, MSMC-TTS obtains MOS of 4.41 and 4.56 on English and Chinese datasets, respectively, which significantly outperforms the baseline with scores of 3.62 and 3.90. Meanwhile, compared with Mel-Spectrograms, the domain discrepancy between prediction and ground truth is lower in MSMCRs with the higher Domain-classification Error Rate (DER). Furthermore, this system shows lower modeling complexity and data size requirements, preserving excellent performance even with fewer model parameters or training data. Finally, we evaluate different representations in compactness, completeness, and TTS performance. The noticeable improvement in analysis-synthesis and TTS from multiple codebooks and stages validate them as vital components in seeking a more profitable speech representation and building high-performance neural TTS.        </p>
         <br />
     </div>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
@@ -43,9 +42,10 @@
         <div class="option-div" id="tests-div">
             <label for="tests">Choose test:</label>
             <select id="tests" onchange=record(this)>
-                <option value="standard_tts">Standard TTS</option>
+                <option value="standard_tts_en">Standard TTS -- English</option>
+                <option value="standard_tts_ch">Standard TTS -- Chinese</option>
                 <option value="lightweight_tts">Lightweight TTS</option>
-                <option value="ablation_study">Ablation Study</option>
+                <option value="representations">Representations</option>
             </select>
         </div>
         <div id="result-div"></div>
@@ -92,12 +92,13 @@
         */
         var dataset = "bc11";
         var tasks = "tts";
-        var tests = 'standard_tts';
+        var tests = 'standard_tts_en';
 
         var tests_to_methods = {
-            "standard_tts": ['recordings', 'mel', 'mel_ft', 'hmcr'],
+            "standard_tts_en": ['recordings', 'mel', 'mel_ft', 'hmcr'],
+            "standard_tts_ch": ['recordings', 'mel', 'hmcr'],
             "lightweight_tts": ['mel_fft_128', 'mel_cnn_128', 'hmcr_fft_128', 'hmcr_cnn_128'],
-            "ablation_study": ['v1', 'v2', 'v3'],
+            "representations": ['v3', 'v2', 'v1'],
         };
 
         var method_to_hdr = {
@@ -111,9 +112,9 @@
             "mel_fft_600": "Mel-M1",
             "mel_fft_128": "Mel-M2",
             "mel_cnn_128": "Mel-M3",
-            "v1": "v3",
-            "v2": "v2",
-            "v3": "v1",
+            "v1": "z7",
+            "v2": "z5",
+            "v3": "z3",
         };
 
         var id_list = [
@@ -129,10 +130,24 @@
             "HAW-136-05",
         ];
 
+        var id_list2 = [
+            "000029",
+            "000068",
+            "000125",
+            "000180",
+            "000214",
+            "000228",
+            "000257",
+            "000311",
+            "000317",
+            "000377",
+        ];
+
         var file_lists = {
-            "bc11_tts_standard_tts": id_list,
+            "bc11_tts_standard_tts_en": id_list,
+            "bc11_tts_standard_tts_ch": id_list2,
             "bc11_tts_lightweight_tts": id_list,
-            "bc11_tts_ablation_study": id_list,
+            "bc11_tts_representations": id_list,
         };
 
         // var root = 'https://dl.fbaipublicfiles.com/speechbot/demo_samples';
